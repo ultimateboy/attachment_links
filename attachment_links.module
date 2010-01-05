@@ -59,9 +59,8 @@ function attachment_links_form_alter(&$form, $form_state, $form_id) {
   if (isset($form['type']) && isset($form['#node']) && isset($form['attachments'])) {
   	// -- TODO This will need to change later when the module is expanded to
   	// -- offer greater list options.
-  	$links = theme('attachment_links', $form['#node']);
-
-    $form['attachments']['#description'] .= $links;
+    $form['attachments']['#description'] .= ' ' . t('Preferred and newest attachments can be downloaded using the following permanent links:');
+    $form['attachments']['#description'] .= theme('attachment_links', $form['#node'], 'upload_form');
   }
 }
 
@@ -115,7 +114,6 @@ function attachment_links_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
 	}
 
   if (($op == 'view') && ($a3 == FALSE) && user_access('view uploaded files')) {
-    _taguser_content_form($node, $a3, $a4);
     $node->content['attachment_links'] = array(
       '#value'  => theme('attachment_links', $node),
       '#weight' => 3,
@@ -140,7 +138,10 @@ function attachment_links_theme($existing, $type, $theme, $path) {
 
   $hooks['attachment_links'] = array(
     'template'  => 'attachment-links',
-    'arguments' => array('node' => NULL),
+    'arguments' => array(
+      'node' => NULL,
+      'display_type' => 'node',
+    ),
   );
 
   return $hooks;
@@ -243,38 +244,39 @@ function template_preprocess_attachment_links(&$vars) {
 
   // -- This section clunky at first, but this design is to accomodate future
   // -- plans for the module.
-  $items   = array();
+  $links   = array();
   $options = array('absolute' => TRUE);
 
-  $auth_path = 'node/' . $node->nid . '/attachment';
-  $items['authoritative'] = array(
+  $preferred_path = 'node/' . $node->nid . '/attachment';
+  $links['preferred'] = array(
     'url'            => $auth_url,
     'weight'         => -5,
     'default render' => t('Preferred version: !link',
-                          array('!link' => l(url($auth_path, $options), $auth_path))),
+                          array('!link' => l(url($preferred_path, $options), $preferred_path))),
   );
 
   $newest_path = 'node/' . $node->nid . '/attachment/newest';
-  $items['newest'] = array(
+  $links['newest'] = array(
     'url'            => $newest_url,
     'weight'         => 0,
     'default render' => t('Newest version: !link',
                           array('!link' => l(url($newest_path, $options), $newest_path))),
   );
 
-  $vars['attachment_links'] = $items;
+  // -- Save a copy of the array.
+  $vars['attachment_links_array'] = $links;
 
-  // -- Create a default link list rendering.
-  $list  = array();
-  foreach ($items as $key => $value) {
-  	$list[] = $value['default render'];
+  // -- Define a translatable title. This will appear only in the node display.
+  $vars['attachment_links_title'] = '';
+  if ($vars['display_type'] == 'node') {
+    $vars['attachment_links_title'] = t('Attachment links');
   }
 
-  $attributes = array(
-    'id'    => 'attachment-link-list',
-    'class' => 'attachment-link-list',
-  );
+  // -- Create a default item list rendering.
+  $items  = array();
+  foreach ($links as $key => $link) {
+  	$items[] = $link['default render'];
+  }
 
-  $vars['default_render'] = theme('item_list', $list, t('Attachment links:'), 'ul', $attributes);
+  $vars['attachment_links'] = theme('item_list', $items, NULL, 'ul', $attributes);
 }
-
