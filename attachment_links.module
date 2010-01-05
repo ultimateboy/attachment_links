@@ -3,18 +3,21 @@
 
 /**
  * @file
- * Attachment Links provides a means of uploading multiple versions of a file
- * to a node and providing a permalink that links to the most recently uploaded
- * version and a permalink that links to the author's preferred version. This
- * functionality handles situations where an author may attach a working draft
- * of a new employee handbook, but link to a previously uploaded file as the
- * preferred version.
+ * The Attachment Links module provides permanent links to files attached to a
+ * node. A single, easy-to-remember URL can be used to retrieve the preferred
+ * (canonical) or newest version of a file regardless of how many versions of 
+ * that file have been attached to a node.
  *
- * The preferred version is the version that has the lightest relative weight
- * among the node's attached files.
+ * Typically, users will want to create a "File" content type and enable the
+ * Attachment Links module for that content type. Each "File" node should
+ * refer to a single file: "Handbook," "Company logo," "Team roster," etc.
+ * Though each node could contain multiple versions of the file, Attachment
+ * Link provides permanent link to access the preferred or newest versions.
  *
- * The module's output is fully themeable, allowing site implementors to
- * eliminate the link to the most recent version, for example.
+ * The "preferred" version is the first file attachment listed in a node's
+ * "File attachments" fieldset.
+ *
+ * The module's output is fully themeable using the included template.
  */
 
 // -- --------------------------------------------------------------------------
@@ -57,10 +60,27 @@ function attachment_links_form_alter(&$form, $form_state, $form_id) {
   }
 
   if (isset($form['type']) && isset($form['#node']) && isset($form['attachments'])) {
-  	// -- TODO This will need to change later when the module is expanded to
-  	// -- offer greater list options.
-    $form['attachments']['#description'] .= ' ' . t('Preferred and newest attachments can be downloaded using the following permanent links:');
-    $form['attachments']['#description'] .= theme('attachment_links', $form['#node'], 'upload_form');
+    $form['attachments']['attachment_links'] = array(
+      '#type'        => 'fieldset',
+      '#collapsible' => TRUE,
+      '#collapsed'   => TRUE,
+      '#title'       => t('Attachment links'),
+      '#description' => t('Attachment links provide permanent links for files attached to this node. The "preferred" version is the first file attachment listed above. Click and drag the handles to the left of each file to reorder them.'),
+      '#weight'      => 5,
+    );
+    // -- Display different help text for node creation and node editing forms.
+    if ($form['nid']['#value']) {
+      $form['attachments']['attachment_links']['help'] = array(
+        '#value' => theme('attachment_links', $form['#node'], 'upload_form'),
+      );
+    }
+    else {
+      $form['attachments']['attachment_links']['help'] = array(
+        '#value'  => t('Attachment links will be created after you save the node.'),
+        '#prefix' => '<div>',
+        '#suffix' => '</div>',
+      );
+    }
   }
 }
 
@@ -115,7 +135,7 @@ function attachment_links_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
 
   if (($op == 'view') && ($a3 == FALSE) && user_access('view uploaded files')) {
     $node->content['attachment_links'] = array(
-      '#value'  => theme('attachment_links', $node),
+      '#value'  => theme('attachment_links', $node, 'node'),
       '#weight' => 3,
     );
   }
@@ -219,6 +239,32 @@ function _attachment_links_download($filepath) {
 }
 
 
+function attachment_links_build_links($node) {
+  // -- This section seems clunky at first, but this design is to accommodate
+  // -- future plans for the module.
+  $links   = array();
+  $options = array('absolute' => TRUE);
+
+  $preferred_path = 'node/' . $node->nid . '/attachment';
+  $links['preferred'] = array(
+    'url'            => $preferred_path,
+    'weight'         => -5,
+    'default render' => t('Preferred version: !link',
+                          array('!link' => l(url($preferred_path, $options), $preferred_path))),
+  );
+
+  $newest_path = 'node/' . $node->nid . '/attachment/newest';
+  $links['newest'] = array(
+    'url'            => $newest_path,
+    'weight'         => 0,
+    'default render' => t('Newest version: !link',
+                          array('!link' => l(url($newest_path, $options), $newest_path))),
+  );
+
+  return $links;
+}
+
+
 // -- --------------------------------------------------------------------------
 // -- Module theming functions.
 // -- --------------------------------------------------------------------------
@@ -240,37 +286,13 @@ function _attachment_links_download($filepath) {
  * @return unknown_type
  */
 function template_preprocess_attachment_links(&$vars) {
-  $node = $vars['node'];
-
-  // -- This section clunky at first, but this design is to accomodate future
-  // -- plans for the module.
-  $links   = array();
-  $options = array('absolute' => TRUE);
-
-  $preferred_path = 'node/' . $node->nid . '/attachment';
-  $links['preferred'] = array(
-    'url'            => $auth_url,
-    'weight'         => -5,
-    'default render' => t('Preferred version: !link',
-                          array('!link' => l(url($preferred_path, $options), $preferred_path))),
-  );
-
-  $newest_path = 'node/' . $node->nid . '/attachment/newest';
-  $links['newest'] = array(
-    'url'            => $newest_url,
-    'weight'         => 0,
-    'default render' => t('Newest version: !link',
-                          array('!link' => l(url($newest_path, $options), $newest_path))),
-  );
-
-  // -- Save a copy of the array.
-  $vars['attachment_links_array'] = $links;
-
-  // -- Define a translatable title. This will appear only in the node display.
-  $vars['attachment_links_title'] = '';
-  if ($vars['display_type'] == 'node') {
+  // -- Define a translatable title. This will not appear in the upload form.
+  if ($vars['display_type'] != 'upload_form') {
     $vars['attachment_links_title'] = t('Attachment links');
   }
+
+  // -- Build an array of links.
+  $links = attachment_links_build_links($vars['node']);
 
   // -- Create a default item list rendering.
   $items  = array();
@@ -278,5 +300,5 @@ function template_preprocess_attachment_links(&$vars) {
   	$items[] = $link['default render'];
   }
 
-  $vars['attachment_links'] = theme('item_list', $items, NULL, 'ul', $attributes);
+  $vars['attachment_links'] = theme('item_list', $items);
 }

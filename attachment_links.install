@@ -1,0 +1,14 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Provides install, uninstall, and update hooks.
+ */
+
+function attachment_links_uninstall() {
+  $vars = db_query("select * from {variable} where name like 'attachment_links%'");
+  while ($var = db_fetch_object($vars)) {
+    variable_del($var->name);
+  }
+}
