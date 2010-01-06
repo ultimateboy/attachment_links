@@ -2,10 +2,17 @@
 // $Id$
 
 /**
- * @file
+ * @file attachment_links.install
  * Provides install, uninstall, and update hooks.
  */
 
+
+/**
+ * Implementation of hook_uninstall(). Removes the content type configuration
+ * variables used by the module.
+ *
+ * @return None.
+ */
 function attachment_links_uninstall() {
   $vars = db_query("select * from {variable} where name like 'attachment_links%'");
   while ($var = db_fetch_object($vars)) {

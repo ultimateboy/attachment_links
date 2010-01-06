@@ -5,7 +5,7 @@
  * @file
  * The Attachment Links module provides permanent links to files attached to a
  * node. A single, easy-to-remember URL can be used to retrieve the preferred
- * (canonical) or newest version of a file regardless of how many versions of 
+ * (canonical) or newest version of a file regardless of how many versions of
  * that file have been attached to a node.
  *
  * Typically, users will want to create a "File" content type and enable the
@@ -228,8 +228,18 @@ function _attachment_links_download($filepath) {
     }
 
     if (count($headers)) {
+    	// -- PHP's basepath function screws up filenames with a space in them.
+    	$parts = explode(DIRECTORY_SEPARATOR, $filepath);
+    	$name  = array_pop($parts);
+
+    	// -- Backslashed escaped characters inside the filename value seem to
+    	// -- confuse browsers, so double quotes are converted to single quotes.
+    	// -- The browser will then adjust the filename to match the host OS'
+    	// -- filename restrictions.
+    	$name = str_replace('"', "'", $name);
+
     	$headers[] = 'Content-Type: application/force-download';
-    	$headers[] = 'Content-Disposition: attachment; filename=' . basename($filepath);
+    	$headers[] = 'Content-Disposition: attachment; filename="' . $name .'"';
 
       file_transfer($filepath, $headers);
     }
