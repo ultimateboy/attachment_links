@@ -66,7 +66,7 @@ function attachment_links_form_alter(&$form, $form_state, $form_id) {
       '#collapsed'   => TRUE,
       '#title'       => t('Attachment links'),
       '#description' => t('Attachment links provide permanent links for files attached to this node. The "preferred" version is the first file attachment listed above. Click and drag the handles to the left of each file to reorder them.'),
-      '#weight'      => 5,
+      '#weight'      => 0,
     );
     // -- Display different help text for node creation and node editing forms.
     if ($form['nid']['#value']) {
