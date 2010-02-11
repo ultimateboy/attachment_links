@@ -59,7 +59,7 @@ function attachment_links_form_alter(&$form, $form_state, $form_id) {
     );
   }
 
-  if (isset($form['type']) && isset($form['#node']) && isset($form['attachments'])) {
+  if (isset($form['type']) && isset($form['#node']) && isset($form['attachments']) && variable_get('attachment_links_'. $form['#node']->type, 0)) {
     $form['attachments']['attachment_links'] = array(
       '#type'        => 'fieldset',
       '#collapsible' => TRUE,
@@ -94,21 +94,21 @@ function attachment_links_menu() {
 	$items = array();
 
 	$items['node/%node/attachment'] = array(
-	  'title' => 'Authoritative Attachment',
-	  'description' => 'The canonical or "lightest" attached file.',
+	  'title'            => 'Authoritative Attachment',
+	  'description'      => 'The canonical or "lightest" attached file.',
   	'type'             => MENU_CALLBACK,
-	  'page callback'    => 'attachment_links_authoritative',
-    'page arguments'   => array(1),
+	  'page callback'    => 'attachment_links_retrieve',
+    'page arguments'   => array(1, 'authoritative'),
 	  'access callback'  => 'user_access',
     'access arguments' => array('view uploaded files'),
 	);
 
 	$items['node/%node/attachment/newest'] = array(
-	  'title' => 'Latest Attachment',
-	  'description' => 'The most recently attached file.',
+	  'title'            => 'Latest Attachment',
+	  'description'      => 'The most recently attached file.',
 	  'type'             => MENU_CALLBACK,
-	  'page callback'    => 'attachment_links_newest',
-    'page arguments'   => array(1),
+	  'page callback'    => 'attachment_links_retrieve',
+    'page arguments'   => array(1, 'newest'),
     'access callback'  => 'user_access',
     'access arguments' => array('view uploaded files'),
   );
@@ -173,40 +173,41 @@ function attachment_links_theme($existing, $type, $theme, $path) {
 // -- --------------------------------------------------------------------------
 
 /**
- * Fetch the authoritative file for the given node.
+ * Fetch the reqested file for the given node.
  *
  * @param $node The node the file is attached to.
  *
- * @return Nothing if the download was successful, or a 404 error page if the
+ * @param $type The type of file requested: authoritative, newest, etc.
+ *
+ * @return Nothing if the download was successful. Otherwise, return a 404 error
+ *         page if the node type doesn't have attachment links enabled or if the
  *         file could not be found.
  */
-function attachment_links_authoritative($node) {
-	$query = "SELECT `filepath` FROM {files} f
-	                 INNER JOIN {upload} u ON f.`fid` = u.`fid`
-	          WHERE u.`vid` = %d
-	          ORDER BY u.`weight` ASC";
+function attachment_links_retrieve($node, $type) {
+  // Check if this node type has attachment links enabled. If not, return a 404.
+  if (!variable_get('attachment_links_'. $node->type, 0)) {
+    return drupal_not_found();
+  }
+
+  switch ($type) {
+    case 'newest' :
+      $query = "SELECT `filepath` FROM {files} f
+               INNER JOIN {upload} u ON f.`fid` = u.`fid`
+               WHERE u.`vid` = %d
+               ORDER BY f.`timestamp` DESC";
+      break;
+
+    case 'authoritative' :
+    default :
+    	$query = "SELECT `filepath` FROM {files} f
+	             INNER JOIN {upload} u ON f.`fid` = u.`fid`
+	             WHERE u.`vid` = %d
+	             ORDER BY u.`weight` ASC";
+      break;
+  }
+
 	$path  = db_result(db_query($query, array($node->vid)));
-
 	_attachment_links_download($path);
-}
-
-
-/**
- * Fetch the authoritative file for the given node.
- *
- * @param $node The node the file is attached to.
- *
- * @return Nothing if the download was successful, or a 404 error page if the
- *         file could not be found.
- */
-function attachment_links_newest($node) {
-  $query = "SELECT `filepath` FROM {files} f
-                   INNER JOIN {upload} u ON f.`fid` = u.`fid`
-            WHERE u.`vid` = %d
-            ORDER BY f.`timestamp` DESC";
-  $path  = db_result(db_query($query, array($node->vid)));
-
-  _attachment_links_download($path);
 }
 
 
