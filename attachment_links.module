@@ -238,7 +238,10 @@ function _attachment_links_download($filepath) {
     	// -- The browser will then adjust the filename to match the host OS'
     	// -- filename restrictions.
     	$name = str_replace('"', "'", $name);
-
+			
+    	$headers[] = 'Expires: 0';
+    	$headers[] = 'Cache-Control: private';
+    	$headers[] = 'Pragma: cache';
     	$headers[] = 'Content-Type: application/force-download';
     	$headers[] = 'Content-Disposition: attachment; filename="' . $name .'"';
 
