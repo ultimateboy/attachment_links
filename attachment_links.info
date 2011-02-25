@@ -1,4 +1,3 @@
-; $Id$
 name           = Attachment links
 description    = "Creates permalinks to the latest and/or cannonical version of a node's attached file."
 dependencies[] = upload
