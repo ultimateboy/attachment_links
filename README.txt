@@ -1,4 +1,21 @@
-Drupal 7 port of attachment_links.module
+Installation & Setup
+=======================
+
+1. Create a content type that will contain the files, for e.g., call it 'File'.
+2. Add a file field to the content type. You'll probably want to set it to 
+   contain multiple values. Remember what you called it.
+3. On the content type edit page at /admin/structure/types/manage/file (if 
+   you've called your type 'file'), click the 'Attachment links' section at the 
+   bottom. Select the file field that will be used by Attachment links when 
+   delivering the canonical file. This option exists as you may have multiple 
+   file fields on a single content type.
+4. You can then create a file node and attach some files to it. When you view
+   the node, you'll see the links to the two versions of the file provided in 
+   the content area. 
+5. There is also an 'Attachment links' section on the node edit form that shows
+   information, such as the currently used field and the links (in case these
+   are not prominently displayed on the node view page.
+
 
 Written and maintained by:
 Four Kitchens

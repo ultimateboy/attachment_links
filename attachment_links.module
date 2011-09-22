@@ -144,11 +144,11 @@ function attachment_links_retrieve($node, $type) {
   if (!$file_field_id) {
     return MENU_NOT_FOUND;
   }
-  
+
   // Grab the files from the current node for the selected field.
   $file_field = field_info_field_by_id($file_field_id);
   $files = field_get_items('node', $node, $file_field['field_name']);
-  
+
   // If we have files, continue, else return 404.
   if (!empty($files)) {
     switch ($type) {
