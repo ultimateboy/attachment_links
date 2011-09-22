@@ -16,6 +16,13 @@ Installation & Setup
    information, such as the currently used field and the links (in case these
    are not prominently displayed on the node view page.
 
+Upgrading from Drupal 6
+========================
+
+The system updates will move your files from the Upload module's 'attached' list
+to a file field named 'upload' automatically. Simply select this field on the 
+content type edit form under 'Attachment links' to re-enable this functionality.
+
 
 Written and maintained by:
 Four Kitchens
