@@ -6,312 +6,191 @@
  * node. A single, easy-to-remember URL can be used to retrieve the preferred
  * (canonical) or newest version of a file regardless of how many versions of
  * that file have been attached to a node.
- *
- * Typically, users will want to create a "File" content type and enable the
- * Attachment Links module for that content type. Each "File" node should
- * refer to a single file: "Handbook," "Company logo," "Team roster," etc.
- * Though each node could contain multiple versions of the file, Attachment
- * Link provides permanent link to access the preferred or newest versions.
- *
- * The "preferred" version is the first file attachment listed in a node's
- * "File attachments" fieldset.
- *
- * The module's output is fully themeable using the included template.
  */
 
-// -- --------------------------------------------------------------------------
-// -- Core Drupal hooks.
-// -- --------------------------------------------------------------------------
-
 /**
- * Implementation of hook_enable(). Make this module heavy to encourage Drupal
- * to run its hooks after the Upload module's hooks.
- *
- * @return None.
- */
-function attachment_links_enable() {
-	$query = "UPDATE {system} SET `weight` = 99 WHERE `name` = 'attachment_links'";
-
-	db_query($query);
-}
-
-
-/**
- * Implementation of hook_form_alter().
- *
- * @param $form The form array to alter.
- * @param $form_state The current form state.
- * @param $form_id The ID of the form being processed.
- *
- * @return None.
- */
-function attachment_links_form_alter(&$form, $form_state, $form_id) {
-  if ($form_id == 'node_type_form' && isset($form['identity']['type'])) {
-  	$desc = t('Attachments must be enabled in order for attachment links to appear.');
-    $form['workflow']['attachment_links'] = array(
-      '#type'          => 'radios',
-      '#title'         => t('Attachment links'),
-      '#description'   => $desc,
-      '#default_value' => variable_get('attachment_links_'. $form['#node_type']->type, 0),
-      '#options'       => array(t('Disabled'), t('Enabled')),
-      '#weight'        => 5,
-    );
-  }
-
-  if (isset($form['type']) && isset($form['#node']) && isset($form['attachments']) && variable_get('attachment_links_'. $form['#node']->type, 0)) {
-    $form['attachments']['attachment_links'] = array(
-      '#type'        => 'fieldset',
-      '#collapsible' => TRUE,
-      '#collapsed'   => TRUE,
-      '#title'       => t('Attachment links'),
-      '#description' => t('Attachment links provide permanent links for files attached to this node. The "preferred" version is the first file attachment listed above. Click and drag the handles to the left of each file to reorder them.'),
-      '#weight'      => 0,
-    );
-    // -- Display different help text for node creation and node editing forms.
-    if ($form['nid']['#value']) {
-      $form['attachments']['attachment_links']['help'] = array(
-        '#value' => theme('attachment_links', $form['#node'], 'upload_form'),
-      );
-    }
-    else {
-      $form['attachments']['attachment_links']['help'] = array(
-        '#value'  => t('Attachment links will be created after you save the node.'),
-        '#prefix' => '<div>',
-        '#suffix' => '</div>',
-      );
-    }
-  }
-}
-
-
-/**
- * Implementation of hook_menu().
- *
- * @return Array of menu items.
+ * Implements hook_menu().
  */
 function attachment_links_menu() {
-	$items = array();
-
-	$items['node/%node/attachment'] = array(
-	  'title'            => 'Authoritative Attachment',
-	  'description'      => 'The canonical or "lightest" attached file.',
-  	'type'             => MENU_CALLBACK,
-	  'page callback'    => 'attachment_links_retrieve',
-    'page arguments'   => array(1, 'authoritative'),
-	  'access callback'  => 'user_access',
-    'access arguments' => array('view uploaded files'),
-	);
-
-	$items['node/%node/attachment/newest'] = array(
-	  'title'            => 'Latest Attachment',
-	  'description'      => 'The most recently attached file.',
-	  'type'             => MENU_CALLBACK,
-	  'page callback'    => 'attachment_links_retrieve',
-    'page arguments'   => array(1, 'newest'),
-    'access callback'  => 'user_access',
-    'access arguments' => array('view uploaded files'),
+  $items['node/%node/attachment'] = array(
+    'title' => 'Authoritative Attachment',
+    'description' => 'The canonical or "lightest" attached file.',
+    'type' => MENU_CALLBACK,
+    'page callback' => 'attachment_links_retrieve',
+    'page arguments' => array(1, 'authoritative'),
+    'access callback' => 'node_access',
+    'access arguments' => array('view', 1),
   );
 
-	return $items;
+  $items['node/%node/attachment/newest'] = array(
+    'title' => 'Latest Attachment',
+    'description' => 'The most recently attached file.',
+    'type' => MENU_CALLBACK,
+    'page callback' => 'attachment_links_retrieve',
+    'page arguments' => array(1, 'newest'),
+    'access callback' => 'node_access',
+    'access arguments' => array('view', 1),
+  );
+
+  return $items;
 }
 
-
 /**
- * Implementation of hook_nodeapi().
- *
- * @param $node The node being operated on.
- * @param $op The operation being performed. This implementation responds to:
- *        "view"
- * @param $a3 For "view", passes in the $teaser parameter from node_view().
- * @param $a4 Ignored.
- *
- * @return None.
+ * Implements hook_node_view().
  */
-function attachment_links_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
-	if ((variable_get("attachment_links_{$node->type}", 0) == 0) || empty($node->files)) {
-		return;
-	}
-
-  if (($op == 'view') && ($a3 == FALSE) && user_access('view uploaded files')) {
+function attachment_links_node_view($node, $view_mode, $langcode) {
+  // Add the links to the node display, for easy access.
+  if (variable_get('attachment_links_selection_' . $node->type, 0)) {
     $node->content['attachment_links'] = array(
-      '#value'  => theme('attachment_links', $node, 'node'),
+      '#markup' => theme('attachment_links', array('node' => $node)),
       '#weight' => 3,
     );
   }
 }
 
-
 /**
- * Implementation of hook_theme().
- *
- * @param $existing $existing An array of existing implementations that may be
- *        used for override purposes.
- * @param $type $type What 'type' is being processed.
- * @param $theme The actual name of theme that is being being checked.
- * @param $path The directory path of the theme or module.
- *
- * @return A keyed array of theme hooks.
+ * Implements hook_theme().
  */
 function attachment_links_theme($existing, $type, $theme, $path) {
-	$hooks = array();
-
   $hooks['attachment_links'] = array(
-    'template'  => 'attachment-links',
-    'arguments' => array(
+    'template' => 'attachment-links',
+    'variables' => array(
       'node' => NULL,
-      'display_type' => 'node',
     ),
   );
-
   return $hooks;
 }
 
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function attachment_links_form_node_type_form_alter(&$form, &$form_state) {
+  // Add a section to the node type edit form that allows the user to select
+  // which file field will be used by Attachment links, as there may be multiple.
+  if (isset($form['type'])) {
+    $node_type = $form['#node_type']->type;
+    if (isset($node_type)) {
+      // Get all file fields on this node type for select options:
+      $options = array(0 => 'Disabled');
+      $instances = field_info_instances('node', $node_type);
+      foreach ($instances as $field_name => $instance) {
+        $field_info = field_info_field($field_name);
+        if ($field_info['type'] == 'file') {
+          $options[$field_info['id']] = $field_name;
+        }
+      }
 
-// -- --------------------------------------------------------------------------
-// -- Module functions.
-// -- --------------------------------------------------------------------------
+      $form['attachment_links'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Attachment links'),
+        '#group' => 'additional_settings',
+      );
+
+      $form['attachment_links']['attachment_links_selection'] = array(
+        '#type' => 'select',
+        '#title' => t('Select file field'),
+        '#description' => t('When hitting attachment links URLs, it will deliver files from this file field.'),
+        '#default_value' => variable_get('attachment_links_selection_' . $node_type, 0),
+        '#options' => $options,
+        '#weight' => 5,
+      );
+    }
+  }
+}
 
 /**
- * Fetch the reqested file for the given node.
- *
- * @param $node The node the file is attached to.
- *
- * @param $type The type of file requested: authoritative, newest, etc.
- *
- * @return Nothing if the download was successful. Otherwise, return a 404 error
- *         page if the node type doesn't have attachment links enabled or if the
- *         file could not be found.
+ * Implements hook_form_FORM_ID_alter().
+ */
+function attachment_links_form_node_form_alter(&$form, &$form_state) {
+  // Provide some help and info on the node edit form.
+  if (isset($form['type']) && isset($form['#node'])) {
+    $file_field_id = variable_get('attachment_links_selection_' . $form['#node']->type, 0);
+    if ($file_field_id) {
+      $file_field = field_info_field_by_id($file_field_id);
+
+      $form['attachment_links'] = array(
+        '#type' => 'fieldset',
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+        '#title' => t('Attachment links'),
+        '#group' => 'additional_settings',
+        '#weight' => 50,
+      );
+      $help_blurb = t('Attachment links provides permanent links for files in the field %field. The "preferred" version is the first file listed on the field %field above. Click and drag the handles to the left of each file to reorder them. You can choose a different field in the content type settings.', array('%field' => $file_field['field_name']));
+
+      // Display different help text for node creation and node editing forms.
+      if ($form['nid']['#value']) {
+        $help_blurb .= theme('attachment_links', array('node' => $form['#node']));
+      }
+      else {
+        $help_blurb .= '<div><strong>' . t('Attachment links will be shown here after you save the node.') . '</strong></div>';
+      }
+
+      $form['attachment_links']['current'] = array(
+        '#type' => 'item',
+        '#title' => t('Attachment links on %field', array('%field' => $file_field['field_name'])),
+        '#markup' => $help_blurb,
+      );
+    }
+  }
+}
+
+/**
+ * Menu callback to fetch the reqested file for the given node.
  */
 function attachment_links_retrieve($node, $type) {
-  // Check if this node type has attachment links enabled. If not, return a 404.
-  if (!variable_get('attachment_links_'. $node->type, 0)) {
-    return drupal_not_found();
+  // Make sure that attachment links are enabled for a field on this node type.
+  $file_field_id = variable_get('attachment_links_selection_' . $node->type, 0);
+  if (!$file_field_id) {
+    return MENU_NOT_FOUND;
   }
-
-  switch ($type) {
-    case 'newest' :
-      $query = "SELECT `filepath` FROM {files} f
-               INNER JOIN {upload} u ON f.`fid` = u.`fid`
-               WHERE u.`vid` = %d
-               ORDER BY f.`timestamp` DESC";
+  
+  // Grab the files from the current node for the selected field.
+  $file_field = field_info_field_by_id($file_field_id);
+  $files = field_get_items('node', $node, $file_field['field_name']);
+  
+  // If we have files, continue, else return 404.
+  if (!empty($files)) {
+    switch ($type) {
+      case 'authoritative':
+        // Return the first element of the array, which is the 'highest' one.
+        $file = reset($files);
+        $uri = $file['uri'];
       break;
 
-    case 'authoritative' :
-    default :
-    	$query = "SELECT `filepath` FROM {files} f
-	             INNER JOIN {upload} u ON f.`fid` = u.`fid`
-	             WHERE u.`vid` = %d
-	             ORDER BY u.`weight` ASC";
+      case 'newest':
+        // Get the newest item by timestamp. In the case of multiple timestamps
+        // being equal, the 'highest' one will be selected. The handy part is
+        // that the array returned by field_get_items is already in weight order,
+        // with key 0 being the lightest.
+        $max_timestamp = 0;
+        foreach ($files as $key => $file) {
+          if ($file['timestamp'] > $max_timestamp) {
+            $max_timestamp = $file['timestamp'];
+            $max_key = $key;
+          }
+        }
+        $uri = $files[$max_key]['uri'];
       break;
-  }
-
-	$path  = db_result(db_query($query, array($node->vid)));
-	_attachment_links_download($path);
-}
-
-
-/**
- * Download the given file over HTTP.
- *
- * @param $filepath The local path to the file.
- *
- * @return None if the call was successful. Returns a themed 404 error page if
- *         the file could not be found.
- */
-function _attachment_links_download($filepath) {
-	// -- Copied from file_download().
-	if (file_exists(file_create_path($filepath))) {
-    $headers = module_invoke_all('file_download', $filepath);
-
-    if (in_array(-1, $headers)) {
-      return drupal_access_denied();
     }
 
-    if (count($headers)) {
-    	// -- PHP's basepath function screws up filenames with a space in them.
-    	$parts = explode(DIRECTORY_SEPARATOR, $filepath);
-    	$name  = array_pop($parts);
-
-    	// -- Backslashed escaped characters inside the filename value seem to
-    	// -- confuse browsers, so double quotes are converted to single quotes.
-    	// -- The browser will then adjust the filename to match the host OS'
-    	// -- filename restrictions.
-    	$name = str_replace('"', "'", $name);
-			
-    	$headers[] = 'Expires: 0';
-    	$headers[] = 'Cache-Control: private';
-    	$headers[] = 'Pragma: cache';
-    	$headers[] = 'Content-Type: application/force-download';
-    	$headers[] = 'Content-Disposition: attachment; filename="' . $name .'"';
-
-      file_transfer($filepath, $headers);
-    }
+    // Function file_create_url will generate either the public direct path
+    // to the file, or in the case of private, will generate /system/files/{file}.
+    drupal_goto(file_create_url($uri));
   }
-
-  return drupal_not_found();
+  else {
+    return MENU_NOT_FOUND;
+  }
 }
-
-
-function attachment_links_build_links($node) {
-  // -- This section seems clunky at first, but this design is to accommodate
-  // -- future plans for the module.
-  $links   = array();
-  $options = array('absolute' => TRUE);
-
-  $preferred_path = 'node/' . $node->nid . '/attachment';
-  $links['preferred'] = array(
-    'url'            => $preferred_path,
-    'weight'         => -5,
-    'default render' => t('Preferred version: !link',
-                          array('!link' => l(url($preferred_path, $options), $preferred_path))),
-  );
-
-  $newest_path = 'node/' . $node->nid . '/attachment/newest';
-  $links['newest'] = array(
-    'url'            => $newest_path,
-    'weight'         => 0,
-    'default render' => t('Newest version: !link',
-                          array('!link' => l(url($newest_path, $options), $newest_path))),
-  );
-
-  return $links;
-}
-
-
-// -- --------------------------------------------------------------------------
-// -- Module theming functions.
-// -- --------------------------------------------------------------------------
 
 /**
- * Preprocess the output for attachment links.
- *
- * @param $vars The theme variables array. After this function is called, these
- *        keys will be available in the array:
- *        - attachment_links: An array of keyed attachment link arrays. Each
- *          array in this array has the following keys:
- *              - 'url' - The URL for that item's attachment.
- *              - 'weight' - The relative weight for that attachment within
- *                 attachment_links.
- *              - 'default render' - A default rendering of the singular item.
- *        - default_render: A default unordered list rendering for the
- *          attachment links as generated by theme('item_list',...).
- *
- * @return unknown_type
+ * Process variables for attachment-links.tpl.php.
  */
 function template_preprocess_attachment_links(&$vars) {
-  // -- Define a translatable title. This will not appear in the upload form.
-  if ($vars['display_type'] != 'upload_form') {
-    $vars['attachment_links_title'] = t('Attachment links');
-  }
-
-  // -- Build an array of links.
-  $links = attachment_links_build_links($vars['node']);
-
-  // -- Create a default item list rendering.
-  $items  = array();
-  foreach ($links as $key => $link) {
-  	$items[] = $link['default render'];
-  }
-
-  $vars['attachment_links'] = theme('item_list', $items);
+  $node = $vars['node'];
+  $options = array('absolute' => TRUE);
+  $vars['items'] = array(
+    t('Preferred version: !link', array('!link' => l(url("node/$node->nid/attachment", $options), "node/$node->nid/attachment"))),
+    t('Newest version: !link', array('!link' => l(url("node/$node->nid/attachment/newest", $options), "node/$node->nid/attachment/newest"))),
+  );
 }

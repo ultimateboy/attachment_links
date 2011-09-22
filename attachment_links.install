@@ -5,16 +5,12 @@
  * Provides install, uninstall, and update hooks.
  */
 
-
 /**
- * Implementation of hook_uninstall(). Removes the content type configuration
- * variables used by the module.
- *
- * @return None.
+ * Implements hook_uninstall().
  */
 function attachment_links_uninstall() {
-  $vars = db_query("select * from {variable} where name like 'attachment_links%'");
-  while ($var = db_fetch_object($vars)) {
-    variable_del($var->name);
-  }
+  // Remove variables used by this module.
+  db_delete('variable')
+    ->condition('name', 'attachment_links%', 'LIKE')
+    ->execute();
 }

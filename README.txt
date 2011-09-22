@@ -1,6 +1,4 @@
-D7 port of attachment_links.module
-
-THIS MODULE IS BROKEN RIGHT NOW!
+Drupal 7 port of attachment_links.module
 
 Written and maintained by:
 Four Kitchens
