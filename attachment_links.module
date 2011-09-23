@@ -80,10 +80,11 @@ function attachment_links_form_node_type_form_alter(&$form, &$form_state) {
       // Get all file fields on this node type for select options:
       $options = array(0 => 'Disabled');
       $instances = field_info_instances('node', $node_type);
+
       foreach ($instances as $field_name => $instance) {
         $field_info = field_info_field($field_name);
         if ($field_info['type'] == 'file') {
-          $options[$field_info['id']] = $field_name;
+          $options[$field_info['id']] = $instances[$field_name]['label'];
         }
       }
 
@@ -109,11 +110,14 @@ function attachment_links_form_node_type_form_alter(&$form, &$form_state) {
  * Implements hook_form_FORM_ID_alter().
  */
 function attachment_links_form_node_form_alter(&$form, &$form_state) {
+  $node = $form['#node'];
   // Provide some help and info on the node edit form.
-  if (isset($form['type']) && isset($form['#node'])) {
-    $file_field_id = variable_get('attachment_links_selection_' . $form['#node']->type, 0);
+  if (isset($form['type']) && isset($node)) {
+    $file_field_id = variable_get('attachment_links_selection_' . $node->type, 0);
     if ($file_field_id) {
       $file_field = field_info_field_by_id($file_field_id);
+      $instances = field_info_instances('node', $node->type);
+      $label = $instances[$file_field['field_name']]['label'];
 
       $form['attachment_links'] = array(
         '#type' => 'fieldset',
@@ -123,11 +127,11 @@ function attachment_links_form_node_form_alter(&$form, &$form_state) {
         '#group' => 'additional_settings',
         '#weight' => 50,
       );
-      $help_blurb = t('Attachment links provides permanent links for files in the field %field. The "preferred" version is the first file listed on the field %field above. Click and drag the handles to the left of each file to reorder them. You can choose a different field in the content type settings.', array('%field' => $file_field['field_name']));
+      $help_blurb = t('Attachment links provides permanent links for files in the field %field. The "preferred" version is the first file listed on the field %field above. Click and drag the handles to the left of each file to reorder them. You can choose a different field in the content type settings.', array('%field' => $label));
 
       // Display different help text for node creation and node editing forms.
       if ($form['nid']['#value']) {
-        $help_blurb .= theme('attachment_links', array('node' => $form['#node']));
+        $help_blurb .= theme('attachment_links', array('node' => $node));
       }
       else {
         $help_blurb .= '<div><strong>' . t('Attachment links will be shown here after you save the node.') . '</strong></div>';
@@ -135,7 +139,7 @@ function attachment_links_form_node_form_alter(&$form, &$form_state) {
 
       $form['attachment_links']['current'] = array(
         '#type' => 'item',
-        '#title' => t('Attachment links on %field', array('%field' => $file_field['field_name'])),
+        '#title' => t('Attachment links on %field', array('%field' => $label)),
         '#markup' => $help_blurb,
       );
     }
