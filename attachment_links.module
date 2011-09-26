@@ -84,7 +84,7 @@ function attachment_links_form_node_type_form_alter(&$form, &$form_state) {
       foreach ($instances as $field_name => $instance) {
         $field_info = field_info_field($field_name);
         if ($field_info['type'] == 'file') {
-          $options[$field_info['id']] = $instances[$field_name]['label'];
+          $options[$field_info['id']] = $instances[$field_name]['label'] . " ($field_name)";
         }
       }
 
@@ -103,7 +103,20 @@ function attachment_links_form_node_type_form_alter(&$form, &$form_state) {
         '#weight' => 5,
       );
     }
+    // Add a submit handler so that we can clear the fields info cache when this
+    // form is submitted.
+    $form['#submit'][] = 'attachment_links_node_type_form_submit';
   }
+}
+
+/**
+ * Submit handler for the node type form.
+ */
+function attachment_links_node_type_form_submit($form, &$form_state) {
+  // Clear the fields info cache. This is only so that the pseudo-field that
+  // appears in 'Display fields' will show for the correct content types only.
+  // Otherwise, we'd have to show the pseudo field for all content types.
+  field_info_cache_clear();
 }
 
 /**
@@ -139,7 +152,7 @@ function attachment_links_form_node_form_alter(&$form, &$form_state) {
 
       $form['attachment_links']['current'] = array(
         '#type' => 'item',
-        '#title' => t('Attachment links on %field', array('%field' => $label)),
+        '#title' => t('Attachment links on %field', array('%field' => $label . ' (' . $file_field['field_name'] . ')')),
         '#markup' => $help_blurb,
       );
     }
@@ -204,4 +217,27 @@ function template_preprocess_attachment_links(&$vars) {
     t('Preferred version: !link', array('!link' => l(url("node/$node->nid/attachment", $options), "node/$node->nid/attachment"))),
     t('Newest version: !link', array('!link' => l(url("node/$node->nid/attachment/newest", $options), "node/$node->nid/attachment/newest"))),
   );
+}
+
+/**
+ * Implements hook_field_extra_fields().
+ */
+function attachment_links_field_extra_fields() {
+  $types = node_type_get_types();
+  foreach ($types as $key => $type) {
+    if (variable_get('attachment_links_selection_' . $key, 0)) {
+      $extra['node'][$key] = array(
+        'display' => array(
+          'attachment_links' => array(
+            'label' => t('Attachment links'),
+            'description' => t('Links to the canonical or preferred version of the attached files.'),
+            'weight' => 3,
+          )
+        )
+      );
+    }
+  }
+  if (isset($extra)) {
+    return $extra;
+  }
 }
