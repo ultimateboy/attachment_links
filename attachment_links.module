@@ -8,6 +8,8 @@
  * that file have been attached to a node.
  */
 
+include('attachment_links.field-formatters.inc');
+
 /**
  * Implements hook_menu().
  */
@@ -65,6 +67,17 @@ function attachment_links_theme($existing, $type, $theme, $path) {
       'node' => NULL,
     ),
   );
+  $hooks['attachment_links_formatter_attachment_links_preferred'] = array(
+    'arguments' => array(
+      'element' => NULL
+    ),
+  );
+  $hooks['attachment_links_formatter_attachment_links_newest'] = array(
+    'arguments' => array(
+      'element' => NULL
+    ),
+  );
+
   return $hooks;
 }
 
