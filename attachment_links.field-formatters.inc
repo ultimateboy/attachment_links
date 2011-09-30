@@ -10,12 +10,12 @@
  */
 function attachment_links_field_formatter_info() {
   $hooks['attachment_links_preferred'] = array(
-    'label' => t("Attachment Links: Preferred"),
+    'label' => t("Preferred link: Filename [TYPE SIZE]"),
     'field types' => array('node_reference'),
     'multiple values' => FIELD_BEHAVIOR_DEFAULT,
   );
   $hooks['attachment_links_newest'] = array(
-    'label' => t("Attachment Links: Newest"),
+    'label' => t("Newest link: Filename [TYPE SIZE]"),
     'field types' => array('node_reference'),
     'multiple values' => FIELD_BEHAVIOR_DEFAULT,
   );
