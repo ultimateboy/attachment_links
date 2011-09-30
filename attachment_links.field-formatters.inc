@@ -75,19 +75,19 @@ function theme_attachment_links_formatter_attachment_links_newest($element) {
 /**
  * Helper to the helper function: Renders AL field formatters.
  */
-function attachment_links_render_formatter($node,$type='preferred'){
+function attachment_links_render_formatter($node, $type='preferred'){
   drupal_add_css(drupal_get_path('module','attachment_links') .'/attachment-links.base.css');
-
   $types = array(
     'preferred' => '',
     'newest'    => '/newest',
   );
-  $file_field_id = variable_get('attachment_links_selection_' . $node->type, 0);
 
+  $file_field_id = variable_get('attachment_links_selection_' . $node->type, 0);
   if ($file_field_id) {
     $file_field = field_info_field_by_id($file_field_id);
     $files = field_get_items('node', $node, $file_field['field_name']);
 
+    // If this is a 'newest' file, re-order array to sort by newest upload
     if ($files && $type == 'newest') {
       $files = _attachment_links_array_sort($files, 'timestamp', SORT_DESC);
     }
@@ -100,8 +100,9 @@ function attachment_links_render_formatter($node,$type='preferred'){
     $filename = implode('.',$fileparts);
     $fileclass = str_replace('/', '-', $file['filemime']);
 
+    // Final output
     $formatted  = '<span class="al-file '.$fileclass.'">';
-    $formatted .= l($filename, "node/$node->nid/attachment". $types[$type]) .' ['. $fileext .', '. ceil($filesize/1024) .'kB]';
+    $formatted .= l($filename, "node/$node->nid/attachment". $types[$type]) .' ['. $fileext .', '. ceil($filesize/1000) .'kB]';
     $formatted .= '</span>';
     
     return $formatted;
