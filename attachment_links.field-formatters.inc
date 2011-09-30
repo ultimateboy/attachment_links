@@ -76,6 +76,8 @@ function theme_attachment_links_formatter_attachment_links_newest($element) {
  * Helper to the helper function: Renders AL field formatters.
  */
 function attachment_links_render_formatter($node,$type='preferred'){
+  drupal_add_css(drupal_get_path('module','attachment_links') .'/attachment-links.base.css');
+
   $types = array(
     'preferred' => '',
     'newest'    => '/newest',
@@ -93,9 +95,14 @@ function attachment_links_render_formatter($node,$type='preferred'){
     // Format the data
     $file = reset($files);
     $filesize = $file['filesize'];
-    $filename = $file['filename'];
-    $filetype = $file['filemime'];
-    $formatted = l($filename, "node/$node->nid/attachment". $types[$type]) .' ['. $filetype .', '. ceil($filesize/1024) .'kB] ';
+    $fileparts = explode('.',$file['filename']);
+    $fileext = strtoupper(array_pop($fileparts));
+    $filename = implode('.',$fileparts);
+    $fileclass = str_replace('/', '-', $file['filemime']);
+
+    $formatted  = '<span class="al-file '.$fileclass.'">';
+    $formatted .= l($filename, "node/$node->nid/attachment". $types[$type]) .' ['. $fileext .', '. ceil($filesize/1024) .'kB]';
+    $formatted .= '</span>';
     
     return $formatted;
   }
