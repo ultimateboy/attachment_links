@@ -211,9 +211,33 @@ function attachment_links_retrieve($node, $type) {
       break;
     }
 
-    // Function file_create_url will generate either the public direct path
-    // to the file, or in the case of private, will generate /system/files/{file}.
-    drupal_goto(file_create_url($uri));
+    // We check for public, and redirect to the file path in that case. In the
+    // case of private, we start serving the file in the current request instead
+    // of redirecting, this saves resources and is useful when we have an alias
+    // for the file path.
+    $scheme = file_uri_scheme($uri);
+    if ($scheme == 'public') {
+      $file_url = file_create_url($uri);
+      drupal_goto($file_url);
+    }
+    else if ($scheme == 'private') {
+      // Serve the file from private files.
+      if ($wrapper = file_stream_wrapper_get_instance_by_uri($uri)) {
+        // Unfortunately we have to do this str_replace nonsense because the
+        // function that we want to call (getTarget) is protected in the stream
+        // wrapper.
+        $file_url = $wrapper->getExternalUrl();
+        $file_url = str_replace(url('system/files/', array('absolute' => TRUE)), '', $file_url);
+        $args = explode('/', $file_url);
+        array_unshift($args, 'private');
+        // This calls the menu callback for private files directly, ensuring that
+        // all access permissions are taken care of.
+        call_user_func_array('file_download', $args);
+      }
+    }
+    else {
+      return MENU_NOT_FOUND;
+    }
   }
   else {
     return MENU_NOT_FOUND;
