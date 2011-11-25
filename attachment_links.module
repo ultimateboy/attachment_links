@@ -58,6 +58,71 @@ function attachment_links_node_view($node, $view_mode, $langcode) {
 }
 
 /**
+ * Implements hook_node_insert().
+ */
+function attachment_links_node_insert($node) {
+  if (!attachment_links_save_alias($node)) {
+    // Keep it clean - if saving an alias doesn't happen, it may be because the
+    // option is switched off, so delete any existing alias.
+    path_delete(array('source' => 'node/' . $node->nid . '/attachment'));
+  }
+}
+
+/**
+ * Implements hook_node_update().
+ */
+function attachment_links_node_update($node) {
+  if (!attachment_links_save_alias($node)) {
+    path_delete(array('source' => 'node/' . $node->nid . '/attachment'));
+  }
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function attachment_links_node_delete($node) {
+  // Delete all aliases associated with this node attachment.
+  path_delete(array('source' => 'node/' . $node->nid . '/attachment'));
+}
+
+/**
+ * Save the convenience alias.
+ */
+function attachment_links_save_alias($node) {
+  $create_alias = variable_get('attachment_links_create_alias_' . $node->type, FALSE);
+
+  if ($create_alias) {
+    // Make sure that attachment links are enabled for a field on this node type.
+    $file_field_id = variable_get('attachment_links_selection_' . $node->type, 0);
+    if ($file_field_id) {
+      // Grab the files from the current node for the selected field.
+      $file_field = field_info_field_by_id($file_field_id);
+      $files = field_get_items('node', $node, $file_field['field_name']);
+      if (!empty($files)) {
+        // Retreive the 'authorative' file.
+        $file = reset($files);
+        $file = file_load($file['fid']);
+        $path_parts = pathinfo($file->filename);
+        $ext = $path_parts['extension'];
+
+        if (!empty($ext) && !empty($node->path['alias'])) {
+          $alias = $node->path['alias'] . '.' . $ext;
+          $source = 'node/' . $node->nid . '/attachment';
+          $new_alias = array(
+            'source' => $source,
+            'alias' => $alias,
+            'language' => $node->language,
+          );
+          path_save($new_alias);
+          return TRUE;
+        }
+      }
+    }
+  }
+  return FALSE;
+}
+
+/**
  * Implements hook_theme().
  */
 function attachment_links_theme($existing, $type, $theme, $path) {
@@ -106,7 +171,6 @@ function attachment_links_form_node_type_form_alter(&$form, &$form_state) {
         '#title' => t('Attachment links'),
         '#group' => 'additional_settings',
       );
-
       $form['attachment_links']['attachment_links_selection'] = array(
         '#type' => 'select',
         '#title' => t('Select file field'),
@@ -114,6 +178,13 @@ function attachment_links_form_node_type_form_alter(&$form, &$form_state) {
         '#default_value' => variable_get('attachment_links_selection_' . $node_type, 0),
         '#options' => $options,
         '#weight' => 5,
+      );
+      $form['attachment_links']['attachment_links_create_alias'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Generate convenience aliases'),
+        '#description' => t('Uses the file extension and node alias to create a file alias, see README.txt for more info.'),
+        '#default_value' => variable_get('attachment_links_create_alias_' . $node_type, FALSE),
+        '#weight' => 6,
       );
     }
     // Add a submit handler so that we can clear the fields info cache when this

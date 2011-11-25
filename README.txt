@@ -18,6 +18,26 @@ Installation & Setup
    information, such as the currently used field and the links (in case these
    are not prominently displayed on the node view page.
 
+Convenience aliases
+========================
+
+There is an option in the content type settings to switch on this alias
+generation. It requires 'Private' file downloads to work - this is because
+aliases can't be generated for public files, as the web server handles these
+directly and Drupal doesn't have a chance to intercept the request.
+
+Instead of having /node/xxx/attachment, we create an alias for this and use the
+node's alias + the file extension to make a convenient alias for the file.
+
+For example, you create a 'File' node, and alias it 'documents/meeting'. You
+attach a file called 'meeting-2001-03-03.pdf' to the node. An alias will be
+created: 'documents/meeting.pdf'. Going to this alias downloads the file.
+
+It's a convenient way of handling attachments - you can view any node with
+attachment links enabled and simply add the extension of the file to the url
+to have it download.
+
+
 Upgrading from Drupal 6
 ========================
 
