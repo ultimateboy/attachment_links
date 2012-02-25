@@ -61,10 +61,9 @@ function attachment_links_node_view($node, $view_mode, $langcode) {
  * Implements hook_node_insert().
  */
 function attachment_links_node_insert($node) {
-  if (!attachment_links_save_alias($node)) {
-    // Keep it clean - if saving an alias doesn't happen, it may be because the
-    // option is switched off, so delete any existing alias.
+  if (variable_get('attachment_links_create_alias_' . $node->type, FALSE)) {
     path_delete(array('source' => 'node/' . $node->nid . '/attachment'));
+    attachment_links_save_alias($node);
   }
 }
 
@@ -72,9 +71,8 @@ function attachment_links_node_insert($node) {
  * Implements hook_node_update().
  */
 function attachment_links_node_update($node) {
-  if (!attachment_links_save_alias($node)) {
-    path_delete(array('source' => 'node/' . $node->nid . '/attachment'));
-  }
+  path_delete(array('source' => 'node/' . $node->nid . '/attachment'));
+  attachment_links_save_alias($node);
 }
 
 /**
@@ -102,11 +100,16 @@ function attachment_links_save_alias($node) {
         // Retreive the 'authorative' file.
         $file = reset($files);
         $file = file_load($file['fid']);
-        $path_parts = pathinfo($file->filename);
-        $ext = $path_parts['extension'];
 
-        if (!empty($ext) && !empty($node->path['alias'])) {
-          $alias = $node->path['alias'] . '.' . $ext;
+        if (!empty($node->path['alias'])) {
+          $node_alias = $node->path['alias'];
+          $alias_parts = explode('/', $node_alias);
+          if (count($alias_parts) > 1) {
+            array_pop($alias_parts);
+            $node_alias = implode('/', $alias_parts);
+          }
+          $alias = $node_alias . '/' . $file->filename;
+
           $source = 'node/' . $node->nid . '/attachment';
           $new_alias = array(
             'source' => $source,
