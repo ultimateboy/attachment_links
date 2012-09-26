@@ -41,12 +41,11 @@ function attachment_links_menu() {
  * Implements hook_node_view().
  */
 function attachment_links_node_view($node, $view_mode, $langcode) {
-  $file_field_id = variable_get('attachment_links_selection_' . $node->type, 0);
+  $file_field_name = variable_get('attachment_links_selection_' . $node->type, 0);
   // Add the links to the node display, for easy access.
-  if ($file_field_id) {
+  if ($file_field_name) {
     // Grab the files from the current node for the selected field.
-    $file_field = field_info_field_by_id($file_field_id);
-    $files = field_get_items('node', $node, $file_field['field_name']);
+    $files = field_get_items('node', $node, $file_field_name);
 
     if ($files) {
       $node->content['attachment_links'] = array(
@@ -91,11 +90,10 @@ function attachment_links_save_alias($node) {
 
   if ($create_alias) {
     // Make sure that attachment links are enabled for a field on this node type.
-    $file_field_id = variable_get('attachment_links_selection_' . $node->type, 0);
-    if ($file_field_id) {
+    $file_field_name = variable_get('attachment_links_selection_' . $node->type, 0);
+    if ($file_field_name) {
       // Grab the files from the current node for the selected field.
-      $file_field = field_info_field_by_id($file_field_id);
-      $files = field_get_items('node', $node, $file_field['field_name']);
+      $files = field_get_items('node', $node, $file_field_name);
       if (!empty($files)) {
         // Retreive the 'authorative' file.
         $file = reset($files);
@@ -165,7 +163,7 @@ function attachment_links_form_node_type_form_alter(&$form, &$form_state) {
       foreach ($instances as $field_name => $instance) {
         $field_info = field_info_field($field_name);
         if ($field_info['type'] == 'file') {
-          $options[$field_info['id']] = $instances[$field_name]['label'] . " ($field_name)";
+          $options[$field_name] = $instances[$field_name]['label'] . " ($field_name)";
         }
       }
 
@@ -213,11 +211,10 @@ function attachment_links_form_node_form_alter(&$form, &$form_state) {
   $node = $form['#node'];
   // Provide some help and info on the node edit form.
   if (isset($form['type']) && isset($node)) {
-    $file_field_id = variable_get('attachment_links_selection_' . $node->type, 0);
-    if ($file_field_id) {
-      $file_field = field_info_field_by_id($file_field_id);
+    $file_field_name = variable_get('attachment_links_selection_' . $node->type, 0);
+    if ($file_field_name) {
       $instances = field_info_instances('node', $node->type);
-      $label = $instances[$file_field['field_name']]['label'];
+      $label = $instances[$file_field_name]['label'];
 
       $form['attachment_links'] = array(
         '#type' => 'fieldset',
@@ -239,7 +236,7 @@ function attachment_links_form_node_form_alter(&$form, &$form_state) {
 
       $form['attachment_links']['current'] = array(
         '#type' => 'item',
-        '#title' => t('Attachment links on %field', array('%field' => $label . ' (' . $file_field['field_name'] . ')')),
+        '#title' => t('Attachment links on %field', array('%field' => $label . ' (' . $file_field_name . ')')),
         '#markup' => $help_blurb,
       );
     }
@@ -251,14 +248,13 @@ function attachment_links_form_node_form_alter(&$form, &$form_state) {
  */
 function attachment_links_retrieve($node, $type) {
   // Make sure that attachment links are enabled for a field on this node type.
-  $file_field_id = variable_get('attachment_links_selection_' . $node->type, 0);
-  if (!$file_field_id) {
+  $file_field_name = variable_get('attachment_links_selection_' . $node->type, 0);
+  if (!$file_field_name) {
     return MENU_NOT_FOUND;
   }
 
   // Grab the files from the current node for the selected field.
-  $file_field = field_info_field_by_id($file_field_id);
-  $files = field_get_items('node', $node, $file_field['field_name']);
+  $files = field_get_items('node', $node, $file_field_name);
 
   // If we have files, continue, else return 404.
   if (!empty($files)) {

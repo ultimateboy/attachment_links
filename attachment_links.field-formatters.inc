@@ -82,9 +82,9 @@ function attachment_links_render_formatter($node, $type='preferred'){
     'newest'    => '/newest',
   );
 
-  $file_field_id = variable_get('attachment_links_selection_' . $node->type, 0);
-  if ($file_field_id) {
-    $file_field = field_info_field_by_id($file_field_id);
+  $file_field_name = variable_get('attachment_links_selection_' . $node->type, 0);
+  if ($file_field_name) {
+    $file_field = field_info_field($file_field_name);
     $files = field_get_items('node', $node, $file_field['field_name']);
 
     // If this is a 'newest' file, re-order array to sort by newest upload
