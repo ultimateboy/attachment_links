@@ -298,8 +298,19 @@ function attachment_links_retrieve($node, $type) {
         // wrapper.
         $file_url = $wrapper->getExternalUrl();
         $file_url = str_replace(url('system/files/', array('absolute' => TRUE)), '', $file_url);
+
+        // The file_url will have URL entities encoded, but file_download()
+        // expects a real filename. Decode first (i.e. turn "%20" into " ")
+        $file_url = urldecode($file_url);
+
         $args = explode('/', $file_url);
         array_unshift($args, 'private');
+
+        // Need to send the filename since we aren't redirecting to a file
+        // but sending the stream directly. file_download() will handle sending
+        // the MIME type and other necessaryt headers.
+        header('Content-Disposition: attachment; filename="' . end($args) . '"');
+
         // This calls the menu callback for private files directly, ensuring that
         // all access permissions are taken care of.
         call_user_func_array('file_download', $args);
